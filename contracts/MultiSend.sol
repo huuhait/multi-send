@@ -68,10 +68,14 @@ contract MultiSend is Ownable {
             }
         }
 
+        for (uint256 i = 0; i < totalAmounts.length; i++) {
+            IERC20 erc20Token = IERC20(tokens[i]);
+            uint256 allowanceAmount = erc20Token.allowance(msg.sender, address(this));
+            require(allowanceAmount >= totalAmounts[i], "Insufficient allowance");
+        }
+
         for (uint256 i = 0; i < recipients.length; i++) {
             IERC20 erc20Token = IERC20(tokens[i]);
-            uint256 balance = erc20Token.balanceOf(msg.sender);
-            require(balance >= totalAmounts[i], "Insufficient balance");
 
             erc20Token.transferFrom(msg.sender, recipients[i], amounts[i]);
         }
