@@ -3,10 +3,13 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract MultiSend is Ownable {
+    using SafeERC20 for IERC20;
+
     uint total_ether;
 
     constructor(address initialOwner) Ownable(initialOwner) {}
@@ -50,34 +53,18 @@ contract MultiSend is Ownable {
     function multiSendTokens(address[] memory tokens, address[] memory recipients, uint256[] memory amounts) public onlyOwner {
         require(tokens.length == recipients.length && recipients.length == amounts.length, "Arrays must have the same length");
 
-        uint256[] memory totalAmounts;
-
-        // Calculate total amounts for each token
-        for (uint256 i = 0; i < tokens.length; i++) {
-            bool exist = false;
-            for (uint256 j = 0; j < i; j++) {
-                if (tokens[i] == tokens[j]) {
-                    exist = true;
-                    totalAmounts[j] += amounts[i];
-                    break;
-                }
-            }
-
-            if (exist == false) {
-                totalAmounts[i] += amounts[i];
-            }
-        }
-
-        for (uint256 i = 0; i < totalAmounts.length; i++) {
-            IERC20 erc20Token = IERC20(tokens[i]);
-            uint256 allowanceAmount = erc20Token.allowance(msg.sender, address(this));
-            require(allowanceAmount >= totalAmounts[i], "Insufficient allowance");
-        }
-
         for (uint256 i = 0; i < recipients.length; i++) {
             IERC20 erc20Token = IERC20(tokens[i]);
 
-            erc20Token.transferFrom(msg.sender, recipients[i], amounts[i]);
+            erc20Token.safeTransferFrom(msg.sender, recipients[i], amounts[i]);
         }
+    }
+
+    function withdrawEthers(uint amount) public onlyOwner {
+        require(amount <= total_ether, "The amount exceeds the total value of the smart-contract");
+
+        total_ether -= amount;
+
+        payable(msg.sender).transfer(amount);
     }
 }
